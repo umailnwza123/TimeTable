@@ -1,0 +1,76 @@
+{
+    "timetable": [
+        {
+            "packageId": 1,
+            "company": "Love Andaman",
+            "company_logo": "dasdasdas.png",
+            "origin": "Visit Panwa",
+            "destination": "Koh Khai",
+            "name_ship": "Rolanta",
+            "Departure": "12.35",
+            "Arrival": "18.30",
+            "Gate": "I4",
+            "Note": "Arrival"
+        },
+        {
+            "packageId": 2,
+            "company": "Love Andaman",
+            "company_logo": "dasdasdas.png",
+            "origin": "Visit Panwa",
+            "destination": "Koh Khai",
+            "name_ship": "Zeus",
+            "Departure": "11.30",
+            "Arrival": "12.33",
+            "Gate": "I5",
+            "Note": "Arrival"
+        },
+        {
+            "packageId": 3,
+            "company": "Love Andaman",
+            "company_logo": "dasdasdas.png",
+            "origin": "Visit Panwa",
+            "destination": "Koh Khai",
+            "name_ship": "Rolanta",
+            "Departure": "13.50",
+            "Arrival": "14.30",
+            "Gate": "I5",
+            "Note": "Arrival"
+        },
+        {
+            "packageId": 4,
+            "company": "Love Andaman",
+            "company_logo": "dasdasdas.png",
+            "origin": "Visit Panwa",
+            "destination": "Koh Phi Phi",
+            "name_ship": "Atinlas",
+            "Departure": "15.20",
+            "Arrival": "16.00",
+            "Gate": "I6",
+            "Note": "Arrival"
+        },
+        {
+            "packageId": 5,
+            "company": "Love Andaman",
+            "company_logo": "dasdasdas.png",
+            "origin": "Visit Panwa",
+            "destination": "Koh Nhu Koh Meow",
+            "name_ship": "Atinlas",
+            "Departure": "13.50",
+            "Arrival": "17.00",
+            "Gate": "I6",
+            "Note": "Arrival"
+        },
+        {
+            "packageId": 6,
+            "company": "Mai Tour",
+            "company_logo": "dasdasdas.png",
+            "origin": "Visit Panwa",
+            "destination": "Hatyai",
+            "name_ship": "Atinlas",
+            "Departure": "15.20",
+            "Arrival": "17.00",
+            "Gate": "I6",
+            "Note": "Arrival"
+        }
+    ]
+}

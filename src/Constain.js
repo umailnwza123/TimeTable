@@ -1,0 +1,2 @@
+
+export const FETCH_TIME_TABLE = 'FETCH_TIME_TABLE'
