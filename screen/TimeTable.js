@@ -5,6 +5,7 @@ import {
     TextInput,
     Text,
     ScrollView,
+    AppState,
     ImageBackground,
     Button,
     Alert,
@@ -51,13 +52,23 @@ const TimeTable = () => {
         checkin: '#90EC92',
         takeoff: '#CAD1E7'
     })
+    const [AppSleep, setAppSleep] = useState(false)
     const [test, setTest] = useState('Testttt')
     const [timeZone, setTimeZone] = useState({
         hour: timeZoneThailand.format('HH'),
         minutes: timeZoneThailand.format('mm'),
         type: timeZoneThailand.format('a')
     })
+    const [Weather, setWeather] = useState({
+        province: '',
+        country: '',
+        temp_c: '',
+        humidity: '',
+        text_weather: '',
+        img_weather: ''
 
+
+    })
     const [showBlink, setShowBlimk] = useState();
     const [timeTableState, setTimeTableState] = useState([])
     const [timeTableProcress, settimeTableProcress] = useState([])
@@ -66,6 +77,10 @@ const TimeTable = () => {
             { id: 1, name: 'test 1' }
         ]
     })
+
+    const API_KEY = '9aee0608f3fa452bad634747212810'
+    const URL_WEATHER = 'http://api.weatherapi.com/v1/current.json'
+
 
     //Use websocket list event onmessage
     //Initial Fetch API 
@@ -106,11 +121,27 @@ const TimeTable = () => {
     }
 
 
+
+    useEffect(() => {
+        AppState.addEventListener('change', state => {
+            if (state === 'active' && netStatus) {
+                console.log('Connect Socket Again')
+                initiateSocketConnection()
+                setAppSleep(false)
+
+            } else if (state === 'background') {
+                console.log('Backgrounf')
+                setAppSleep(true)
+            }
+        });
+    }, [])
+
     //Reconnection
     useEffect(() => {
-        if (!netStatus) {
+        if (netStatus === false) {
             const timeConnetion = setInterval(() => {
                 initiateSocketConnection()
+                console.log(netStatus)
                 console.log('Reconnection....')
                 if (!showErrorPopup.active) {
                     setNetwork(true)
@@ -146,6 +177,7 @@ const TimeTable = () => {
         };
 
         ws.onclose = e => {
+            console.log('Close CHERAEY')
             setNetwork(false)
         };
         ws.onerror = e => {
@@ -173,8 +205,6 @@ const TimeTable = () => {
 
     const CalculateOrProcressTime = (TimeTablePackage) => {
         let timeCurrent = momentTimezone.tz('Asia/Bangkok').format('HH:mm')
-        let Arrayfinal = []
-        let ArrayNormally = []
         try {
             TimeTablePackage.map((item, index) => {
                 try {
@@ -182,26 +212,22 @@ const TimeTable = () => {
                     let ArrivalTime = item.arrival
                     let timeCurrentSeccond = (timeCurrent.split(':')[0] * 3600) + (timeCurrent.split(':')[1] * 60) // Change current time to milliseccond
                     let DepTimeSeccond = (DepTime.split(':')[0] * 3600) + (DepTime.split(':')[1] * 60) //Change Departure time to milliseccond
+                    //console.log(DepTimeSeccond)
                     let ArrivalSeccond = (ArrivalTime.split(':')[0] * 3600) + (ArrivalTime.split(':')[1] * 60)
-                    console.log(hhmmss((DepTimeSeccond) - (timeCurrentSeccond))) //hhmmss function would be change milliseccond to HH:mm format
+                    // console.log('Depart Time'+hhmmss((DepTimeSeccond) - (timeCurrentSeccond))) //hhmmss function would be change milliseccond to HH:mm format
+                    // console.log('Arrival Time'+hhmmss((ArrivalSeccond) - (timeCurrentSeccond)))
+
                     if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) < 0 || //Over difine time
                         parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) < 0) {
                         item.note = 'Out'
                     }
-                    if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than 30 minutes => Final Calling
+                    else if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than 30 minutes => Final Calling
                         parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 30) {
                         item.note = 'Final'
                     }
                     else if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than or equal 60 => Chanking
                         parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 60) {
                         item.note = 'Checkin'
-                    }
-                    else if (parseInt(hhmmss((ArrivalTime) - (timeCurrentSeccond)).split(':')[0]) > 0 ||  // Procress time > than defined activity time   
-                        parseInt(hhmmss((ArrivalTime) - (timeCurrentSeccond)).split(':')[1]) >= 60) {
-                        item.note = 'Arrival'
-                    }
-                    else {
-                        null
                     }
                 }
                 catch (error) {
@@ -238,29 +264,21 @@ const TimeTable = () => {
         }
     }, [])
 
-
-
-
     //Calling Calculate time function
     useEffect(() => {
-
         if (timeTableState.length > 0 && netStatus === true) {
             const TimeProcress = setInterval(() => {
-                console.log('Working')
+                console.log('Time calculator is Working')
                 setShow({
                     ...showErrorPopup,
                     active: false,
                     msg: ''
                 })
                 CalculateOrProcressTime(timeTableState)
-
             }, 60000) //60000
             return () => clearInterval(TimeProcress)
-        } else {
-            console.log('Connection or data loss ...')
         }
     }, [timeTableState])
-
 
     //background color change
     useEffect(() => {
@@ -272,6 +290,38 @@ const TimeTable = () => {
         }
     });
 
+    //TEst Fetch Wether 
+
+    useEffect(() => {
+        let infor = new FormData()
+        infor.append("key", API_KEY)
+        infor.append("q", "phuket")
+        axios({
+            method: 'POST',
+            url: `http://api.weatherapi.com/v1/current.json`,
+            data: infor,
+            headers: {
+                "Content-Type": "application/json"
+            }
+
+        })
+            .then((response) => {
+                setWeather({
+                    ...Weather,
+                    province: response.data.location.name,
+                    country: response.data.location.country,
+                    temp_c: response.data.current.temp_c,
+                    humidity: response.data.current.humidity,
+                    text_weather: response.data.current.condition.text,
+                    img_weather: response.data.current.condition.icon
+
+                })
+            })
+            .catch((error) => {
+                console.log(error)
+            })
+
+    }, [])
 
 
     return (
@@ -450,14 +500,7 @@ const TimeTable = () => {
                 }
 
             </View>
-            {/* {
-                showErrorPopup.active ?
-                    <View style={{ width: '100%', height: '100%', position: 'absolute' }} >
-                        <PopupMsg msg={showErrorPopup.msg} />
-                    </View>
-                    :
-                    null
-            } */}
+
 
             {/* Footer text sign */}
             <View style={{
@@ -471,7 +514,7 @@ const TimeTable = () => {
                 justifyContent: 'center'
 
             }}>
-                <TextTicker
+                {/* <TextTicker
                     style={{
                         fontSize: RFPercentage(1.5),
                         marginLeft: 8,
@@ -492,10 +535,28 @@ const TimeTable = () => {
                         !netStatus ?
                             showErrorPopup.msg
                             :
-                            ' Super long piece of text is long. The quick brown Super long piece of text is long. The quick brown fox jumps over the lazy dog.fox jumps over the lazy dog. Super long piece of text is long. The quick brown fox jumps over the lazy dog.'
+                            `Welcome  to  Visit  Panwa  ${Weather.province} ${Weather.country}. Today a temporary is ${Weather.temp_c} in celcius and humidity ${Weather.humidity}. ${Weather.text_weather}`
                     }
 
-                </TextTicker>
+                </TextTicker> */}
+                <AutoScrolling
+                    endPadding={50}
+                >
+                    <Text
+                        style={{
+                            fontSize: RFPercentage(1.5),
+                            marginLeft: 8,
+                            fontFamily: 'Kanit-SemiBold',
+                            color: 'black'
+                        }}>
+                        {
+                            !netStatus ?
+                                showErrorPopup.msg
+                                :
+                                `Welcome to Visit Panwa ${Weather.province} ${Weather.country}. Today a temporary is ${Weather.temp_c} in celcius and humidity ${Weather.humidity}. ${Weather.text_weather}`
+                        }
+                    </Text>
+                </AutoScrolling>
             </View>
         </View>
     )

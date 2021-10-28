@@ -1,0 +1,41 @@
+{
+    "current": {
+        "cloud": 25,
+        "condition": {
+            "code": 1003,
+            "icon": "//cdn.weatherapi.com/weather/64x64/day/116.png",
+            "text": "Partly cloudy"
+        },
+        "feelslike_c": 34.9,
+        "feelslike_f": 94.8,
+        "gust_kph": 17.3,
+        "gust_mph": 10.7,
+        "humidity": 75,
+        "is_day": 1,
+        "last_updated": "2021-10-28 11:00",
+        "last_updated_epoch": 1635393600,
+        "precip_in": 0,
+        "precip_mm": 0,
+        "pressure_in": 29.8,
+        "pressure_mb": 1009,
+        "temp_c": 30,
+        "temp_f": 86,
+        "uv": 7,
+        "vis_km": 10,
+        "vis_miles": 6,
+        "wind_degree": 90,
+        "wind_dir": "E",
+        "wind_kph": 19.1,
+        "wind_mph": 11.9
+    },
+    "location": {
+        "country": "Thailand",
+        "lat": 7.88,
+        "localtime": "2021-10-28 12:11",
+        "localtime_epoch": 1635397903,
+        "lon": 98.4,
+        "name": "Phuket",
+        "region": "Phuket",
+        "tz_id": "Asia/Bangkok"
+    }
+}
