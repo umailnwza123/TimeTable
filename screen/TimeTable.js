@@ -7,6 +7,7 @@ import {
     ScrollView,
     ImageBackground,
     Button,
+    Alert,
     Image,
     ActivityIndicator,
     StyleSheet
@@ -15,11 +16,19 @@ import { RFPercentage } from "react-native-responsive-fontsize";
 import { useSelector, useDispatch } from "react-redux";
 import * as TimeTableAction from '../src/Action/TimeTable.Action'
 import Icon from 'react-native-vector-icons/Ionicons'
+import PopupMsg from "../components/PopupMsg";
 import axios from "axios";
 const { width, height } = Dimensions.get('window')
 import moment from 'moment';
+import MarqueeText from 'react-native-marquee';
+import TextTicker from 'react-native-text-ticker'
+import AutoScrolling from "react-native-auto-scrolling";
+import { Avatar } from 'react-native-elements';
 var momentTimezone = require('moment-timezone');
 let timeZoneThailand = momentTimezone.tz('Asia/Bangkok')//.format('HH:mm a')
+const uid = 'pier2';
+const socketServer = `wss://ioservice.xyz/ws/messenger?uid=`
+const API_URL = 'https://yakkoplatform.com/pier/api/timetable'
 
 
 const TimeTable = () => {
@@ -28,21 +37,28 @@ const TimeTable = () => {
     const TimeTable_reducer = useSelector(({ FetchTimeTableReducer }) => FetchTimeTableReducer)
     const dispatch = useDispatch()
     const [heightView, setHeightView] = useState()
+    const [errormsg, seterrormsg] = useState('test error')
+    const [showErrorPopup, setShow] = useState({
+        active: false,
+        msg: ''
+    })
+    const [netStatus, setNetwork] = useState(true)
     const [initialTime, setinitialTime] = useState()
     const [contentHeight, setContentHeight] = useState()
     const [backgroundFinal, setbackgroundFinal] = useState('#F7ADAD')
     const [backgroundColorState, setBackgroundColor] = useState({
         final: '#F7ADAD', //'#F7ADAD': item.note==='Checkin' ?'#90EC92'
         checkin: '#90EC92',
-        takeoff: '#F97575'
+        takeoff: '#CAD1E7'
     })
+    const [test, setTest] = useState('Testttt')
     const [timeZone, setTimeZone] = useState({
         hour: timeZoneThailand.format('HH'),
         minutes: timeZoneThailand.format('mm'),
         type: timeZoneThailand.format('a')
     })
 
-    const [showBlink, setShowBlimk] = useState(true);
+    const [showBlink, setShowBlimk] = useState();
     const [timeTableState, setTimeTableState] = useState([])
     const [timeTableProcress, settimeTableProcress] = useState([])
     const [testData, setTestdata] = useState({
@@ -51,6 +67,97 @@ const TimeTable = () => {
         ]
     })
 
+    //Use websocket list event onmessage
+    //Initial Fetch API 
+    useEffect(() => {
+        initiateSocketConnection()
+    }, [])
+
+    //Fetch API Method
+    const fetchTimeAPI = () => {
+        axios({
+            method: 'GET',
+            url: API_URL,
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+            .then((response) => {
+                if (response.data.length <= 0) {
+                    setShow({
+                        ...showErrorPopup,
+                        active: true,
+                        msg: 'No package tour'
+                    })
+                } else {
+                    setTimeTableState(CalculateOrProcressTime(response.data))
+
+                }
+            })
+            .catch((error) => {
+                // console.error(error)
+                // seterrormsg(error)
+                setShow({
+                    ...showErrorPopup,
+                    active: true,
+                    msg: 'Network Error Please connect again...'
+                })
+            })
+    }
+
+
+    //Reconnection
+    useEffect(() => {
+        if (!netStatus) {
+            const timeConnetion = setInterval(() => {
+                initiateSocketConnection()
+                console.log('Reconnection....')
+                if (!showErrorPopup.active) {
+                    setNetwork(true)
+                }
+            }, 5000)
+            return () => clearInterval(timeConnetion)
+        }
+    }, [netStatus])
+
+
+    //initial socket connection function
+    const initiateSocketConnection = () => {
+        // Add URL to the server which will contain the server side setup
+        const ws = new WebSocket(`${socketServer}${uid}`);
+        // When a connection is made to the server, send the user ID so we can track which
+        // socket belongs to which user
+        ws.onopen = () => {
+            console.log('socket connected');
+            setNetwork(true)
+            fetchTimeAPI()
+            setShow({
+                ...showErrorPopup,
+                active: false,
+                msg: ''
+            })
+        };
+        ws.onmessage = e => {
+            console.log(e)
+            const message = JSON.parse(e.data);
+            if (message.data.task === 'refresh') {
+                fetchTimeAPI()
+            }
+        };
+
+        ws.onclose = e => {
+            setNetwork(false)
+        };
+        ws.onerror = e => {
+            setShow({
+                ...showErrorPopup,
+                active: true,
+                msg: 'Network Error Please connect again...'
+            })
+            ws.close()
+
+        };
+    };
 
     function hhmmss(secs) {
         var minutes = Math.floor(secs / 60);
@@ -64,210 +171,98 @@ const TimeTable = () => {
         return ("0" + num).slice(-2);
     }
 
-    function FinalProcress(TimeTablePackage) {
-        let timeCurrent = momentTimezone.tz('Asia/Bangkok').format('HH:mm')
-        TimeTablePackage.map(async (item, index) => {
-            let DepTime = item.Departure
-            let timeCurrentSeccond = (timeCurrent.split(':')[0] * 3600) + (timeCurrent.split(':')[1] * 60)
-            let DepTimeSeccond = (DepTime.split('.')[0] * 3600) + (DepTime.split('.')[1] * 60)
-            // console.log(hhmmss((DepTimeSeccond)-(timeCurrentSeccond)))
-
-            if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 &&
-                parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 30) {
-                item.Note = 'Final'
-            }
-            else {
-                null
-            }
-        })
-
-        return TimeTablePackage
-
-    }
-
-    async function SortFinal(TimeTables) {
-        let Arrayfinal = []
-        let ArrayNormally = []
-        for (var i = 0; i < TimeTables.length; i++) {
-            if (TimeTables[i].Note === 'Final') {
-                Arrayfinal.push(TimeTables[i])
-            }
-            else {
-                ArrayNormally.push(TimeTables[i])
-            }
-        }
-        ArrayNormally.map((item) => {
-            Arrayfinal.push(item)
-        })
-        return ArrayNormally
-    }
-
-
     const CalculateOrProcressTime = (TimeTablePackage) => {
         let timeCurrent = momentTimezone.tz('Asia/Bangkok').format('HH:mm')
         let Arrayfinal = []
         let ArrayNormally = []
-
-        TimeTablePackage.map((item, index) => {
-            try {
-                let DepTime = item.departure
-                let timeCurrentSeccond = (timeCurrent.split(':')[0] * 3600) + (timeCurrent.split(':')[1] * 60) // Change current time to milliseccond
-                let DepTimeSeccond = (DepTime.split(':')[0] * 3600) + (DepTime.split(':')[1] * 60) //Change Departure time to milliseccond
-
-                console.log(hhmmss((DepTimeSeccond) - (timeCurrentSeccond))) //hhmmss function would be change milliseccond to HH:mm format
-                if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) < 0 || //Over difine time
-                    parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) < 0) {
-                    item.note = 'Take off'
+        try {
+            TimeTablePackage.map((item, index) => {
+                try {
+                    let DepTime = item.departure
+                    let ArrivalTime = item.arrival
+                    let timeCurrentSeccond = (timeCurrent.split(':')[0] * 3600) + (timeCurrent.split(':')[1] * 60) // Change current time to milliseccond
+                    let DepTimeSeccond = (DepTime.split(':')[0] * 3600) + (DepTime.split(':')[1] * 60) //Change Departure time to milliseccond
+                    let ArrivalSeccond = (ArrivalTime.split(':')[0] * 3600) + (ArrivalTime.split(':')[1] * 60)
+                    console.log(hhmmss((DepTimeSeccond) - (timeCurrentSeccond))) //hhmmss function would be change milliseccond to HH:mm format
+                    if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) < 0 || //Over difine time
+                        parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) < 0) {
+                        item.note = 'Out'
+                    }
+                    if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than 30 minutes => Final Calling
+                        parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 30) {
+                        item.note = 'Final'
+                    }
+                    else if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than or equal 60 => Chanking
+                        parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 60) {
+                        item.note = 'Checkin'
+                    }
+                    else if (parseInt(hhmmss((ArrivalTime) - (timeCurrentSeccond)).split(':')[0]) > 0 ||  // Procress time > than defined activity time   
+                        parseInt(hhmmss((ArrivalTime) - (timeCurrentSeccond)).split(':')[1]) >= 60) {
+                        item.note = 'Arrival'
+                    }
+                    else {
+                        null
+                    }
                 }
-
-                if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than 30 minutes => Final Calling
-                    parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 30) {
-                    item.note = 'Final'
+                catch (error) {
+                    seterrormsg(error)
+                    console.log('Error 2')
                 }
-                else if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than or equal 60 => Chanking
-                    parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 60) {
-                    item.note = 'Checkin'
-
-                }
-                else if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) > 0 ||  // Procress time > than defined activity time   
-                    parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) >= 60) {
-                    item.note = 'Arrival'
-
-                }
-                else {
-                    null
-                }
-            }
-            catch(error){
-                console.error(error)
-            }
-            
-        })
-        // for(var i=0; i < TimeTablePackage.length; i++ ){
-        //     if(TimeTablePackage[i].Note === 'Final'){
-        //         Arrayfinal.push(TimeTablePackage[i])
-        //     }
-        //     else{
-        //         ArrayNormally.push(TimeTablePackage[i])
-        //     }
-        // }
-
-        // ArrayNormally.map((item)=>{
-        //      Arrayfinal.push(item)
-        // })
-        //setTimeTableState(Arrayfinal)
-        //dispatch(TimeTableAction.FetchTimeFun(TimeTablePackage))
-        // console.log(Arrayfinal.length+' '+ArrayNormally.length)
-        //dispatch(TimeTableAction.FetchTimeFun(Arrayfinal))
+            })
+        }
+        catch (error) {
+            seterrormsg(error)
+            console.log('Error 1')
+        }
         return TimeTablePackage
     }
 
 
+    //current time
     useEffect(() => {
-        const currentTime = setInterval(() => {
-            let time = momentTimezone.tz('Asia/Bangkok')
-            setTimeZone({
-                ...timeZone,
-                hour: time.format('HH'),
-                minutes: time.format('mm'),
-                type: time.format('a')
-            })
-        }, 1000)
-        return () => clearInterval(currentTime)
+        try {
+            const currentTime = setInterval(() => {
+                let time = momentTimezone.tz('Asia/Bangkok')
+                setTimeZone({
+                    ...timeZone,
+                    hour: time.format('HH'),
+                    minutes: time.format('mm'),
+                    type: time.format('a')
+                })
+            }, 1000)
+            return () => clearInterval(currentTime)
+        }
+        catch (error) {
+            console.error('Error 3')
+            seterrormsg(error)
+        }
     }, [])
 
 
-    // useEffect(() => {
-    //     // Change the state every second or the time given by User.
-    //     const interval = setInterval(() => {
-    //         setShowBlimk((showBlink) => !showBlink);
-    //     }, 1000);
-    //     return () => clearInterval(interval);
-    // }, []);
 
+
+    //Calling Calculate time function
     useEffect(() => {
-        axios({
-            method: 'GET',
-            url: 'http://192.168.1.129/yakko-platform/pier/api/timetable',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            }
 
-        })
-            .then((response) => {
-                setTimeTableState(CalculateOrProcressTime(response.data))
-            })
-            .catch((error) => {
-                console.log(error)
-            })
-        //Fetch Api Herer
-
-
-        // dispatch(FetchAction to TimeTable_reducer -> TimeTable)
-
-    }, [])
-
-    //Fetch Follw time 
-    useEffect(() => {
-        const FetchTime = setInterval(() => {
-            console.log('Fetch Workig')
-            axios({
-                method: 'GET',
-                url: 'http://192.168.1.129/yakko-platform/pier/api/timetable',
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-
-            })
-                .then((response) => {
-                    setTimeTableState(CalculateOrProcressTime(response.data))
-                })
-                .catch((error) => {
-                    console.log(error)
-                })
-        }, 50000)
-        return () => clearInterval(FetchTime)
-    })
-
-
-    useEffect(() => {
-        console.log(timeTableState.length)
-        if (timeTableState.length > 0) {
+        if (timeTableState.length > 0 && netStatus === true) {
             const TimeProcress = setInterval(() => {
+                console.log('Working')
+                setShow({
+                    ...showErrorPopup,
+                    active: false,
+                    msg: ''
+                })
                 CalculateOrProcressTime(timeTableState)
-            }, 60000)
+
+            }, 60000) //60000
             return () => clearInterval(TimeProcress)
+        } else {
+            console.log('Connection or data loss ...')
         }
     }, [timeTableState])
 
-    // useEffect(()=>{
-    //     if(TimeTable_reducer.TimeTable.length > 0){
-    //         setTimeTableState(TimeTable_reducer.TimeTable)
-    //     }
-    // })
 
-    //initiall 
-    // useEffect(() => {
-    //     console.log('HELL')
-    //     setTimeTableState(TimeTable_reducer.TimeTable)
-
-    //     //console.log(TimeTable_reducer.TimeTable)
-    // }, [])
-
-    // useEffect(()=>{
-    //     if(timeTableState.length > 0 ){
-    //        setInterval(()=>{
-    //             CalculateOrProcressTime(timeTableState)
-    //        },10000)
-
-    //     }
-    // },[timeTableState])
-
-    // useEffect(()=>{
-    //     setInterval(()=>{
-
-    //     })
-    // },[])
+    //background color change
     useEffect(() => {
         if (backgroundFinal === '#F7ADAD' || backgroundFinal === 'white') {
             const timeoutID = setTimeout(() => {
@@ -293,7 +288,7 @@ const TimeTable = () => {
                 <View
                     style={style.header_canvas} >
                     <View style={[style.Logo_canvas]}>
-                        {/* Logo Here */}
+
                     </View>
                     <View style={[style.TimeTable_Label_canvas, style.set_center]}>
                         <Text style={style.font_header_style}>
@@ -311,20 +306,16 @@ const TimeTable = () => {
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Text style={[style.font_time, { color: 'black' }]}>Time :  </Text>
                             <Text style={style.font_time} > {`${timeZone.hour}:${timeZone.minutes} ${timeZone.type.toUpperCase()}`} </Text>
-                            {/* <Text style={style.font_time} > {`${timeZone.hour}:${timeZone.minutes} ${timeZone.type}`} </Text> */}
-                            {/* {
-                                showBlink ? null : <Icon name={'time'} />
-                            } */}
                         </View>
 
                     </View>
                 </View>
 
-                {/* Content */}
 
-                {/* Header Content */}
+
+
                 <View style={style.header_content_canvas} >
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.15 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.25 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             บริษัทเรือ
                         </Text>
@@ -340,7 +331,7 @@ const TimeTable = () => {
                             (ฺBoat name)
                         </Text>
                     </View>
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.22 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.2 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             จุดหมายปลายทาง
                         </Text>
@@ -348,7 +339,7 @@ const TimeTable = () => {
                             (Destination)
                         </Text>
                     </View>
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.12 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.1 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             ขาออก
                         </Text>
@@ -356,7 +347,7 @@ const TimeTable = () => {
                             (Departure)
                         </Text>
                     </View>
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.12 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.1 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             ขาเข้า
                         </Text>
@@ -364,7 +355,7 @@ const TimeTable = () => {
                             (Arrival)
                         </Text>
                     </View>
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.1 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.06 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             ประตู
                         </Text>
@@ -382,7 +373,7 @@ const TimeTable = () => {
                     </View>
                 </View>
 
-                {/* Body row Content */}
+
                 {
                     timeTableState.length > 0 ?
                         timeTableState.map((item, index) => {
@@ -392,63 +383,120 @@ const TimeTable = () => {
                                     {
                                         backgroundColor: index % 2 == 0 ?
                                             item.note === 'Final' ? backgroundFinal : item.note === 'Checkin' ?
-                                                backgroundColorState.checkin : item.note === 'Take off' ? backgroundColorState.takeoff : '#ffffff'
+                                                backgroundColorState.checkin : item.note === 'Out' ? backgroundColorState.takeoff : '#ffffff'
                                             : item.note === 'Final' ?
-                                                backgroundFinal : item.note === 'Checkin' ? backgroundColorState.checkin : item.note === 'Take off' ? backgroundColorState.takeoff : '#ffffff'
+                                                backgroundFinal : item.note === 'Checkin' ? backgroundColorState.checkin : item.note === 'Out' ? backgroundColorState.takeoff : '#ffffff'
                                     }]}>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.15 }]}>
-                                        <Text style={style.font_content_style}>
-                                            {item.company}
-                                        </Text>
+                                    <View style={[style.color_border_content_box,
+                                    { flex: 0.25, flexDirection: 'row' }]}>
+
+                                        <View style={style.logo_image_canvas} >
+                                            <View style={style.logo_image_circle_canvas}>
+                                                <Image
+                                                    resizeMethod={'resize'}
+                                                    resizeMode={'contain'}
+                                                    style={style.logo_image}
+                                                    source={{ uri: item.company_logo }}
+                                                />
+                                            </View>
+                                        </View>
+                                        <View style={[style.set_center, {
+                                            width: '60%', height: '100%',
+                                        }]}>
+                                            <Text style={style.font_content_style}>
+                                                {item.company}
+                                            </Text>
+                                        </View>
+
                                     </View>
                                     <View style={[style.set_center, style.color_border_content_box, { flex: 0.15 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.name_ship}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.22 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.2 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.destination}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.12 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.1 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.departure}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.12 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.1 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.arrival}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.1 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.06 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.gate}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center,  { flex: 0.14 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.14 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.note === 'Final' ? 'Final Call' : item.note}
                                         </Text>
                                     </View>
                                 </View>
                             )
-
                         })
                         :
-                        <View style={[style.set_center, { flex: 1 }]}>
+
+                        <View style={{ flex: 1 }}>
                             <ActivityIndicator color={'red'} size={'small'} />
                         </View>
-
-
                 }
 
-
             </View>
+            {/* {
+                showErrorPopup.active ?
+                    <View style={{ width: '100%', height: '100%', position: 'absolute' }} >
+                        <PopupMsg msg={showErrorPopup.msg} />
+                    </View>
+                    :
+                    null
+            } */}
 
+            {/* Footer text sign */}
+            <View style={{
+                width: '100%',
+                height: '5%',
+                position: 'absolute',
+                backgroundColor: 'white',
+                bottom: 0,
+                flex: 1,
+                alignItems: netStatus ? null : 'center',
+                justifyContent: 'center'
 
+            }}>
+                <TextTicker
+                    style={{
+                        fontSize: RFPercentage(1.5),
+                        marginLeft: 8,
+                        fontFamily: 'Kanit-SemiBold',
+                        color: 'black'
+                    }}
+                    duration={15000}
+                    shouldAnimateTreshold={60}
+                    loop
+                    bounce
+                    scroll={false}
+                    onMarqueeComplete={() => {
+                        console.log('Compete')
+                    }}
+                    marqueeDelay={6000}
+                >
+                    {
+                        !netStatus ?
+                            showErrorPopup.msg
+                            :
+                            ' Super long piece of text is long. The quick brown Super long piece of text is long. The quick brown fox jumps over the lazy dog.fox jumps over the lazy dog. Super long piece of text is long. The quick brown fox jumps over the lazy dog.'
+                    }
 
-
+                </TextTicker>
+            </View>
         </View>
     )
 }
@@ -482,7 +530,7 @@ const style = StyleSheet.create({
     },
     row_canvas: {
         width: '100%',
-        height: height * 0.05,
+        height: height * 0.061,
         backgroundColor: 'white',
         borderBottomWidth: 0.6,
         flexDirection: 'row'
@@ -520,11 +568,12 @@ const style = StyleSheet.create({
         fontFamily: 'Kanit-Regular'
     },
     font_time: {
+        color: 'white',
         fontSize: RFPercentage(1.35),
         fontFamily: 'Kanit-SemiBold'
     },
     font_content_style: {
-        fontSize: RFPercentage(1.2),
+        fontSize: RFPercentage(1.4),
         color: 'black',
         fontFamily: 'Kanit-Regular'
     },
@@ -542,5 +591,22 @@ const style = StyleSheet.create({
     set_center: {
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    logo_image_canvas: {
+        width: '40%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'white'
+    },
+    logo_image_circle_canvas: { //circle
+        width: width * 0.03,
+        height: width * 0.027,
+        justifyContent: 'center'
+    },
+    logo_image: {
+        width: width * 0.045,
+        height: width * 0.025,
+        alignSelf: 'center'
     }
 })
