@@ -9,14 +9,16 @@ import {
     ImageBackground,
     Button,
     Alert,
+    BackHandler,
     Image,
     ActivityIndicator,
     StyleSheet
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
 import { useSelector, useDispatch } from "react-redux";
+import { useIsFocused } from "@react-navigation/native";
 import * as TimeTableAction from '../src/Action/TimeTable.Action'
-import Icon from 'react-native-vector-icons/Ionicons'
+import Icon from 'react-native-vector-icons/FontAwesome'
 import PopupMsg from "../components/PopupMsg";
 import axios from "axios";
 const { width, height } = Dimensions.get('window')
@@ -24,7 +26,6 @@ import moment from 'moment';
 import MarqueeText from 'react-native-marquee';
 import TextTicker from 'react-native-text-ticker'
 import AutoScrolling from "react-native-auto-scrolling";
-import { Avatar } from 'react-native-elements';
 var momentTimezone = require('moment-timezone');
 let timeZoneThailand = momentTimezone.tz('Asia/Bangkok')//.format('HH:mm a')
 const uid = 'pier2';
@@ -32,20 +33,16 @@ const socketServer = `wss://ioservice.xyz/ws/messenger?uid=`
 const API_URL = 'https://yakkoplatform.com/pier/api/timetable'
 
 
-const TimeTable = () => {
-    const timeSetup = moment.utc(new Date().getTime())
-    const heightRef = useRef()
-    const TimeTable_reducer = useSelector(({ FetchTimeTableReducer }) => FetchTimeTableReducer)
+
+const TimeTable = ({ navigation }) => {
     const dispatch = useDispatch()
-    const [heightView, setHeightView] = useState()
-    const [errormsg, seterrormsg] = useState('test error')
+    const VideoReducer = useSelector(({FetchTimeTableReducer})=> FetchTimeTableReducer)
+    const isFocused = useIsFocused();
     const [showErrorPopup, setShow] = useState({
         active: false,
         msg: ''
     })
     const [netStatus, setNetwork] = useState(true)
-    const [initialTime, setinitialTime] = useState()
-    const [contentHeight, setContentHeight] = useState()
     const [backgroundFinal, setbackgroundFinal] = useState('#F7ADAD')
     const [backgroundColorState, setBackgroundColor] = useState({
         final: '#F7ADAD', //'#F7ADAD': item.note==='Checkin' ?'#90EC92'
@@ -53,40 +50,20 @@ const TimeTable = () => {
         takeoff: '#CAD1E7'
     })
     const [AppSleep, setAppSleep] = useState(false)
-    const [test, setTest] = useState('Testttt')
     const [timeZone, setTimeZone] = useState({
         hour: timeZoneThailand.format('HH'),
         minutes: timeZoneThailand.format('mm'),
         type: timeZoneThailand.format('a')
     })
-    const [Weather, setWeather] = useState({
-        province: '',
-        country: '',
-        temp_c: '',
-        humidity: '',
-        text_weather: '',
-        img_weather: ''
-
-
-    })
-    const [showBlink, setShowBlimk] = useState();
     const [timeTableState, setTimeTableState] = useState([])
-    const [timeTableProcress, settimeTableProcress] = useState([])
-    const [testData, setTestdata] = useState({
-        Test: [
-            { id: 1, name: 'test 1' }
-        ]
-    })
-
-    const API_KEY = '9aee0608f3fa452bad634747212810'
-    const URL_WEATHER = 'http://api.weatherapi.com/v1/current.json'
-
 
     //Use websocket list event onmessage
     //Initial Fetch API 
     useEffect(() => {
-        initiateSocketConnection()
+        fetchTimeAPI()
+        //initiateSocketConnection()
     }, [])
+
 
     //Fetch API Method
     const fetchTimeAPI = () => {
@@ -110,8 +87,7 @@ const TimeTable = () => {
                 }
             })
             .catch((error) => {
-                // console.error(error)
-                // seterrormsg(error)
+                setNetwork(false)
                 setShow({
                     ...showErrorPopup,
                     active: true,
@@ -126,6 +102,7 @@ const TimeTable = () => {
         AppState.addEventListener('change', state => {
             if (state === 'active' && netStatus) {
                 console.log('Connect Socket Again')
+                fetchTimeAPI()
                 initiateSocketConnection()
                 setAppSleep(false)
 
@@ -136,59 +113,67 @@ const TimeTable = () => {
         });
     }, [])
 
+
+    //Fetch Folllow by time 
+    
+
     //Reconnection
     useEffect(() => {
         if (netStatus === false) {
             const timeConnetion = setInterval(() => {
-                initiateSocketConnection()
-                console.log(netStatus)
+                fetchTimeAPI()
                 console.log('Reconnection....')
                 if (!showErrorPopup.active) {
                     setNetwork(true)
                 }
-            }, 5000)
+            }, 20000)
             return () => clearInterval(timeConnetion)
         }
+
     }, [netStatus])
+
 
 
     //initial socket connection function
     const initiateSocketConnection = () => {
         // Add URL to the server which will contain the server side setup
         const ws = new WebSocket(`${socketServer}${uid}`);
-        // When a connection is made to the server, send the user ID so we can track which
-        // socket belongs to which user
-        ws.onopen = () => {
-            console.log('socket connected');
-            setNetwork(true)
-            fetchTimeAPI()
-            setShow({
-                ...showErrorPopup,
-                active: false,
-                msg: ''
-            })
-        };
-        ws.onmessage = e => {
-            console.log(e)
-            const message = JSON.parse(e.data);
-            if (message.data.task === 'refresh') {
-                fetchTimeAPI()
-            }
-        };
+        try {
+            ws.onopen = () => {
+                console.log('socket connected');
+                setNetwork(true)
+                setShow({
+                    ...showErrorPopup,
+                    active: false,
+                    msg: ''
+                })
+            };
+            ws.onmessage = e => {
+                const message = JSON.parse(e.data);
+                if (message.data.task === 'refresh') {
+                    fetchTimeAPI()
+                }
+            };
 
-        ws.onclose = e => {
-            console.log('Close CHERAEY')
-            setNetwork(false)
-        };
-        ws.onerror = e => {
-            setShow({
-                ...showErrorPopup,
-                active: true,
-                msg: 'Network Error Please connect again...'
-            })
-            ws.close()
+            ws.onclose = e => {
+                console.log('Close CHERAEY')
+                //setNetwork(false)
+            };
+            ws.onerror = e => {
+                console.log('Workinf Heere')
+                setShow({
+                    ...showErrorPopup,
+                    active: true,
+                    msg: 'Network Error Please connect again...'
+                })
+                setNetwork(false)
+                //ws.close()
+            };
+        }
+        catch (e) {
+            console.error(e)
+        }
 
-        };
     };
 
     function hhmmss(secs) {
@@ -201,6 +186,11 @@ const TimeTable = () => {
     }
     function pad(num) {
         return ("0" + num).slice(-2);
+    }
+
+    const ReFreshTime = ()=>{
+        setTimeTableState([])
+        fetchTimeAPI()
     }
 
     const CalculateOrProcressTime = (TimeTablePackage) => {
@@ -269,60 +259,62 @@ const TimeTable = () => {
         if (timeTableState.length > 0 && netStatus === true) {
             const TimeProcress = setInterval(() => {
                 console.log('Time calculator is Working')
+                //dispatch(TimeTableAction.SetCalProcessing(true))
                 setShow({
                     ...showErrorPopup,
                     active: false,
                     msg: ''
                 })
                 CalculateOrProcressTime(timeTableState)
-            }, 60000) //60000
+            }, 65000) //60000
             return () => clearInterval(TimeProcress)
         }
     }, [timeTableState])
 
     //background color change
     useEffect(() => {
-        if (backgroundFinal === '#F7ADAD' || backgroundFinal === 'white') {
-            const timeoutID = setTimeout(() => {
-                setbackgroundFinal(backgroundFinal === '#F7ADAD' ? 'white' : '#F7ADAD');
-            }, 500);
-            return () => clearTimeout(timeoutID);
+        try {
+            if (backgroundFinal === '#F7ADAD' || backgroundFinal === 'white') {
+                const timeoutID = setInterval(() => {
+                    setbackgroundFinal(backgroundFinal === '#F7ADAD' ? 'white' : '#F7ADAD');
+                }, 500);
+                return () => clearInterval(timeoutID);
+            }
         }
+        catch (e) {
+            console.error(e)
+        }
+
     });
 
-    //TEst Fetch Wether 
+    //Fecth Followed by time 
+    useEffect(()=>{
+        const TimeToFetch = setInterval(()=>{
+            setTimeTableState([])
+            fetchTimeAPI()
+        },360000)
+        return ()=> clearInterval(TimeToFetch)
+    }, [timeTableState])
 
+
+    //Show Ad Video
     useEffect(() => {
-        let infor = new FormData()
-        infor.append("key", API_KEY)
-        infor.append("q", "phuket")
-        axios({
-            method: 'POST',
-            url: `http://api.weatherapi.com/v1/current.json`,
-            data: infor,
-            headers: {
-                "Content-Type": "application/json"
-            }
+        if(isFocused){
+            const TimeToShow = setTimeout(() => {
+                navigation.navigate('VideoAd')
+            }, 1800000) //1800000
+            return () => clearTimeout(TimeToShow)
+        }
+        
 
-        })
-            .then((response) => {
-                setWeather({
-                    ...Weather,
-                    province: response.data.location.name,
-                    country: response.data.location.country,
-                    temp_c: response.data.current.temp_c,
-                    humidity: response.data.current.humidity,
-                    text_weather: response.data.current.condition.text,
-                    img_weather: response.data.current.condition.icon
+    }, [isFocused])
 
-                })
-            })
-            .catch((error) => {
-                console.log(error)
-            })
 
-    }, [])
 
+    // BackHandler.addEventListener('hardwareBackPress', BackButton);
+    useEffect(() => {
+        BackHandler.addEventListener('hardwareBackPress', () => true);
+    }, []);
 
     return (
         <View style={{ flex: 1 }} >
@@ -336,7 +328,7 @@ const TimeTable = () => {
                 source={require('../assets/images/bg.jpg')} />
             <View style={style.canvas} >
                 <View
-                    style={style.header_canvas} >
+                    style={[style.header_canvas]} >
                     <View style={[style.Logo_canvas]}>
 
                     </View>
@@ -344,7 +336,11 @@ const TimeTable = () => {
                         <Text style={style.font_header_style}>
                             ตารางเวลาเรือ
                         </Text>
-                        <Text style={style.font_header_behide_style} >
+                        <Text
+                            onPress={() => {
+                                navigation.navigate('VideoAd')
+                            }}
+                            style={style.font_header_behide_style} >
                             TIME TABLE
                         </Text>
                     </View>
@@ -357,7 +353,14 @@ const TimeTable = () => {
                             <Text style={[style.font_time, { color: 'black' }]}>Time :  </Text>
                             <Text style={style.font_time} > {`${timeZone.hour}:${timeZone.minutes} ${timeZone.type.toUpperCase()}`} </Text>
                         </View>
-
+                    </View>
+                    <View style={[style.Refresh_canvas, style.set_center,
+                         {alignItems: 'flex-start'} ]} > 
+                            <Icon 
+                            onPress={()=> ReFreshTime() }
+                            color={'#002248'}
+                            size={RFPercentage(2)}
+                             name={'refresh'} />
                     </View>
                 </View>
 
@@ -439,16 +442,13 @@ const TimeTable = () => {
                                     }]}>
                                     <View style={[style.color_border_content_box,
                                     { flex: 0.25, flexDirection: 'row' }]}>
-
                                         <View style={style.logo_image_canvas} >
-                                            <View style={style.logo_image_circle_canvas}>
-                                                <Image
-                                                    resizeMethod={'resize'}
-                                                    resizeMode={'contain'}
-                                                    style={style.logo_image}
-                                                    source={{ uri: item.company_logo }}
-                                                />
-                                            </View>
+                                            <Image
+                                                resizeMethod={'resize'}
+                                                resizeMode={'contain'}
+                                                style={style.logo_image}
+                                                source={{ uri: item.company_logo }}
+                                            />
                                         </View>
                                         <View style={[style.set_center, {
                                             width: '60%', height: '100%',
@@ -493,7 +493,6 @@ const TimeTable = () => {
                             )
                         })
                         :
-
                         <View style={{ flex: 1 }}>
                             <ActivityIndicator color={'red'} size={'small'} />
                         </View>
@@ -503,58 +502,19 @@ const TimeTable = () => {
 
 
             {/* Footer text sign */}
-            <View style={{
-                width: '100%',
-                height: '5%',
-                position: 'absolute',
-                backgroundColor: 'white',
-                bottom: 0,
-                flex: 1,
-                alignItems: netStatus ? null : 'center',
-                justifyContent: 'center'
-
-            }}>
-                {/* <TextTicker
-                    style={{
-                        fontSize: RFPercentage(1.5),
-                        marginLeft: 8,
-                        fontFamily: 'Kanit-SemiBold',
-                        color: 'black'
-                    }}
-                    duration={15000}
-                    shouldAnimateTreshold={60}
-                    loop
-                    bounce
-                    scroll={false}
-                    onMarqueeComplete={() => {
-                        console.log('Compete')
-                    }}
-                    marqueeDelay={6000}
-                >
-                    {
-                        !netStatus ?
-                            showErrorPopup.msg
-                            :
-                            `Welcome  to  Visit  Panwa  ${Weather.province} ${Weather.country}. Today a temporary is ${Weather.temp_c} in celcius and humidity ${Weather.humidity}. ${Weather.text_weather}`
-                    }
-
-                </TextTicker> */}
+            <View style={[style.footer_text_canvas, {backgroundColor: backgroundFinal}]}>
                 <AutoScrolling
                     endPadding={50}
                 >
                     <Text
-                        style={{
-                            fontSize: RFPercentage(1.5),
-                            marginLeft: 8,
-                            fontFamily: 'Kanit-SemiBold',
-                            color: 'black'
-                        }}>
-                        {
-                            !netStatus ?
-                                showErrorPopup.msg
+                        style={style.font_stlye_marquee} >
+                            {
+                                netStatus ?
+                                "Welcome to Visit Panwa, You can check your route time at here. Have a nice Day :)"
                                 :
-                                `Welcome to Visit Panwa ${Weather.province} ${Weather.country}. Today a temporary is ${Weather.temp_c} in celcius and humidity ${Weather.humidity}. ${Weather.text_weather}`
-                        }
+                                showErrorPopup.msg
+                            }
+                        
                     </Text>
                 </AutoScrolling>
             </View>
@@ -582,13 +542,6 @@ const style = StyleSheet.create({
         borderTopLeftRadius: width * 0.012,
         overflow: 'hidden'
     },
-    row_canvas_final: {
-        width: '100%',
-        height: height * 0.05,
-        backgroundColor: 'red',
-        borderBottomWidth: 0.6,
-        flexDirection: 'row'
-    },
     row_canvas: {
         width: '100%',
         height: height * 0.061,
@@ -609,20 +562,34 @@ const style = StyleSheet.create({
         flex: 0.2,
     },
     TimeTable_Label_canvas: {
-        flex: 0.65,
+        flex: 0.6,
         flexDirection: 'row',
         justifyContent: 'center',
     },
     Current_date_time_canvas: {
-        flex: 0.15,
+        flex: 0.13,
         justifyContent: 'flex-end',
-        paddingBottom: '1%'
+        paddingBottom: '1%',
+    },
+    Refresh_canvas:{
+        flex: 0.07,
+        paddingTop: '1%'
     },
     font_color_header: {
         color: 'white',
     },
     font_color_header_below: {
         color: '#c3933a',
+    },
+    footer_text_canvas: {
+        width: '100%',
+        height: '5%',
+        position: 'absolute',
+        backgroundColor: 'white',
+        bottom: 0,
+        flex: 1,
+        justifyContent: 'center'
+
     },
     font_header_content_style: {
         fontSize: RFPercentage(1.35),
@@ -649,6 +616,11 @@ const style = StyleSheet.create({
         fontFamily: 'Kanit-SemiBold',
         color: '#de8300'
     },
+    font_stlye_marquee: {
+        fontSize: RFPercentage(1.5),
+        fontFamily: 'Kanit-SemiBold',
+        color: 'black'
+    },
     set_center: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -658,16 +630,16 @@ const style = StyleSheet.create({
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'white'
+        backgroundColor: 'transparent'
     },
     logo_image_circle_canvas: { //circle
         width: width * 0.03,
-        height: width * 0.027,
+        height: width * 0.025,
         justifyContent: 'center'
     },
     logo_image: {
         width: width * 0.045,
-        height: width * 0.025,
+        height: width * 0.028,
         alignSelf: 'center'
     }
 })

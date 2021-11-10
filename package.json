@@ -10,6 +10,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@react-navigation/native": "^6.0.6",
+    "@react-navigation/native-stack": "^6.2.5",
     "axios": "^0.23.0",
     "moment": "^2.29.1",
     "moment-timezone": "^0.5.33",
@@ -20,8 +22,11 @@
     "react-native-elements": "^3.4.2",
     "react-native-marquee": "^0.3.2",
     "react-native-responsive-fontsize": "^0.5.1",
+    "react-native-safe-area-context": "^3.3.2",
+    "react-native-screens": "^3.9.0",
     "react-native-text-ticker": "^1.14.0",
     "react-native-vector-icons": "^8.1.0",
+    "react-native-video": "^5.2.0",
     "react-redux": "^7.2.5",
     "redux": "^4.1.1",
     "redux-logger": "^3.0.6",
