@@ -5,43 +5,32 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native'
 import * as TimeTableAction from '../src/Action/TimeTable.Action'
 import { useSelector, useDispatch } from "react-redux";
 import Video from 'react-native-video';
-
+import YouTube from 'react-native-youtube';
 
 const VideoAd = ({navigation, VideoName}) => {
     const VideoRef = useRef()
     const isFocused = useIsFocused()
     const disPatch = useDispatch()
     const VideoReducer = useSelector(({FetchTimeTableReducer})=> FetchTimeTableReducer)
-    const [playVideo, setplayVideo] = useState(require('../assets/video/Yakko2.mp4'))
+    const [playVideo, setplayVideo] = useState(require('../assets/video/Yakko.mp4'))
+    const [videolink, setvideolink] = useState('https://www.youtube.com/watch?v=Bp8vGn4u5g8&ab_channel=Yakko')
     const [currentTimeVideo, setCurrentTimeVideo] = useState()
-    // useEffect(()=>{
-    //     if(VideoReducer.CalProcressed === true){
-    //         disPatch(TimeTableAction.SetCalProcessing(false))
-    //         disPatch(TimeTableAction.SetCurrentTimeVideo(currentTimeVideo))
-    //         navigation.goBack()
-    //     }
-    // },[VideoReducer.CalProcressed])
 
 
     return (
         <View style={{ flex: 1, }}>
             {
                 playVideo ?
-                <Video source={playVideo}   // Can be a URL or a local file.
-                ref={VideoRef}        
+                <Video 
+                source={playVideo}   // Can be a URL or a local file.
+                ref={VideoRef}     
+                muted   
                 onEnd={()=>{
                     console.log('End Video')
-                    // disPatch(TimeTableAction.SetCurrentTimeVideo(0))
-                    // disPatch(TimeTableAction.SetCalProcessing(false))
                     navigation.goBack()
                 }}
                 
                 fullscreen={true}
-                // onProgress={(currentTime)=>{
-                //     setCurrentTimeVideo(currentTime.currentTime)
-                //     console.log(currentTime.playableDuration/2)
-       
-                // }}
                 resizeMode={'stretch'}
                 style={style.backgroundVideo} />
                 :

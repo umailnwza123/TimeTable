@@ -133,7 +133,7 @@ android {
 
     defaultConfig {
         applicationId "com.visitpanwatimetable"
-        minSdkVersion 21 //rootProject.ext.minSdkVersion
+        minSdkVersion  21 //rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
         versionName "1.0.1"

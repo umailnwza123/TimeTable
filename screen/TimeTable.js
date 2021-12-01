@@ -36,7 +36,7 @@ const API_URL = 'https://yakkoplatform.com/pier/api/timetable'
 
 const TimeTable = ({ navigation }) => {
     const dispatch = useDispatch()
-    const VideoReducer = useSelector(({FetchTimeTableReducer})=> FetchTimeTableReducer)
+    const VideoReducer = useSelector(({ FetchTimeTableReducer }) => FetchTimeTableReducer)
     const isFocused = useIsFocused();
     const [showErrorPopup, setShow] = useState({
         active: false,
@@ -101,9 +101,8 @@ const TimeTable = ({ navigation }) => {
     useEffect(() => {
         AppState.addEventListener('change', state => {
             if (state === 'active' && netStatus) {
-                console.log('Connect Socket Again')
                 fetchTimeAPI()
-                initiateSocketConnection()
+                //initiateSocketConnection()
                 setAppSleep(false)
 
             } else if (state === 'background') {
@@ -115,7 +114,7 @@ const TimeTable = ({ navigation }) => {
 
 
     //Fetch Folllow by time 
-    
+
 
     //Reconnection
     useEffect(() => {
@@ -182,13 +181,13 @@ const TimeTable = ({ navigation }) => {
         var hours = Math.floor(minutes / 60)
         minutes = minutes % 60;
         return `${pad(hours)}:${pad(minutes)}`;
-        // return pad(hours)+":"+pad(minutes)+":"+pad(secs); for old browsers
     }
     function pad(num) {
-        return ("0" + num).slice(-2);
+        //console.log(num < -9) //-10 -9
+        return ("0" + num).slice(num < -9 ? -3 : -2);
     }
 
-    const ReFreshTime = ()=>{
+    const ReFreshTime = () => {
         setTimeTableState([])
         fetchTimeAPI()
     }
@@ -198,14 +197,13 @@ const TimeTable = ({ navigation }) => {
         try {
             TimeTablePackage.map((item, index) => {
                 try {
-                    let DepTime = item.departure
+                    let DepTime = item.departure //13.00
                     let ArrivalTime = item.arrival
                     let timeCurrentSeccond = (timeCurrent.split(':')[0] * 3600) + (timeCurrent.split(':')[1] * 60) // Change current time to milliseccond
                     let DepTimeSeccond = (DepTime.split(':')[0] * 3600) + (DepTime.split(':')[1] * 60) //Change Departure time to milliseccond
-                    //console.log(DepTimeSeccond)
                     let ArrivalSeccond = (ArrivalTime.split(':')[0] * 3600) + (ArrivalTime.split(':')[1] * 60)
-                    // console.log('Depart Time'+hhmmss((DepTimeSeccond) - (timeCurrentSeccond))) //hhmmss function would be change milliseccond to HH:mm format
-                    // console.log('Arrival Time'+hhmmss((ArrivalSeccond) - (timeCurrentSeccond)))
+                    //  console.log('Depart Time'+hhmmss((DepTimeSeccond) - (timeCurrentSeccond))) //hhmmss function would be change milliseccond to HH:mm format
+                    //console.log('Arrival Time'+hhmmss((ArrivalSeccond) - (timeCurrentSeccond)))
 
                     if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) < 0 || //Over difine time
                         parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) < 0) {
@@ -232,7 +230,6 @@ const TimeTable = ({ navigation }) => {
         }
         return TimeTablePackage
     }
-
 
     //current time
     useEffect(() => {
@@ -288,24 +285,23 @@ const TimeTable = ({ navigation }) => {
     });
 
     //Fecth Followed by time 
-    useEffect(()=>{
-        const TimeToFetch = setInterval(()=>{
-            setTimeTableState([])
-            fetchTimeAPI()
-        },360000)
-        return ()=> clearInterval(TimeToFetch)
+    useEffect(() => {
+        const TimeToFetch = setInterval(() => {
+            ReFreshTime()
+        }, 300000) // 2 Minutes
+        return () => clearInterval(TimeToFetch)
     }, [timeTableState])
 
 
     //Show Ad Video
     useEffect(() => {
-        if(isFocused){
+        if (isFocused) {
             const TimeToShow = setTimeout(() => {
                 navigation.navigate('VideoAd')
-            }, 1800000) //1800000
+            }, 600000) //600000
             return () => clearTimeout(TimeToShow)
         }
-        
+
 
     }, [isFocused])
 
@@ -329,8 +325,15 @@ const TimeTable = ({ navigation }) => {
             <View style={style.canvas} >
                 <View
                     style={[style.header_canvas]} >
-                    <View style={[style.Logo_canvas]}>
+                    <View style={[style.Logo_canvas,]}>
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} >
 
+                            <Image source={require('../assets/images/logo-02.png')} 
+                                resizeMode={'contain'}
+                                style={{alignSelf: 'center', width: width*0.08, height: width*0.08}}
+                            />
+
+                        </View>
                     </View>
                     <View style={[style.TimeTable_Label_canvas, style.set_center]}>
                         <Text style={style.font_header_style}>
@@ -355,12 +358,12 @@ const TimeTable = ({ navigation }) => {
                         </View>
                     </View>
                     <View style={[style.Refresh_canvas, style.set_center,
-                         {alignItems: 'flex-start'} ]} > 
-                            <Icon 
-                            onPress={()=> ReFreshTime() }
+                    { alignItems: 'flex-start' }]} >
+                        <Icon
+                            onPress={() => ReFreshTime()}
                             color={'#002248'}
                             size={RFPercentage(2)}
-                             name={'refresh'} />
+                            name={'refresh'} />
                     </View>
                 </View>
 
@@ -502,19 +505,19 @@ const TimeTable = ({ navigation }) => {
 
 
             {/* Footer text sign */}
-            <View style={[style.footer_text_canvas, {backgroundColor: backgroundFinal}]}>
+            <View style={[style.footer_text_canvas]}>
                 <AutoScrolling
                     endPadding={50}
                 >
                     <Text
                         style={style.font_stlye_marquee} >
-                            {
-                                netStatus ?
-                                "Welcome to Visit Panwa, You can check your route time at here. Have a nice Day :)"
+                        {
+                            netStatus ?
+                                "Welcome to Visit Panwa, You can check your trip here. Have a nice Day :)"
                                 :
                                 showErrorPopup.msg
-                            }
-                        
+                        }
+
                     </Text>
                 </AutoScrolling>
             </View>
@@ -571,7 +574,7 @@ const style = StyleSheet.create({
         justifyContent: 'flex-end',
         paddingBottom: '1%',
     },
-    Refresh_canvas:{
+    Refresh_canvas: {
         flex: 0.07,
         paddingTop: '1%'
     },
