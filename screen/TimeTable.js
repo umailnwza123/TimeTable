@@ -216,6 +216,8 @@ const TimeTable = ({ navigation }) => {
                     else if (parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[0]) === 0 && // Procress time less than or equal 60 => Chanking
                         parseInt(hhmmss((DepTimeSeccond) - (timeCurrentSeccond)).split(':')[1]) <= 60) {
                         item.note = 'Checkin'
+                    }else{
+                        // item.note = ' Arri'
                     }
                 }
                 catch (error) {
@@ -371,7 +373,7 @@ const TimeTable = ({ navigation }) => {
 
 
                 <View style={style.header_content_canvas} >
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.25 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.27 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             บริษัทเรือ
                         </Text>
@@ -379,7 +381,7 @@ const TimeTable = ({ navigation }) => {
                             (Company)
                         </Text>
                     </View>
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.15 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.19 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             ชื่อเรือ
                         </Text>
@@ -387,7 +389,7 @@ const TimeTable = ({ navigation }) => {
                             (ฺBoat name)
                         </Text>
                     </View>
-                    <View style={[style.set_center, style.color_border_box, { flex: 0.2 }]}>
+                    <View style={[style.set_center, style.color_border_box, { flex: 0.18 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             จุดหมายปลายทาง
                         </Text>
@@ -419,7 +421,7 @@ const TimeTable = ({ navigation }) => {
                             (Gate)
                         </Text>
                     </View>
-                    <View style={[style.set_center, { flex: 0.14 }]}>
+                    <View style={[style.set_center, { flex: 0.1 }]}>
                         <Text style={[style.font_header_content_style, style.font_color_header]}>
                             หมายเหตุ
                         </Text>
@@ -444,7 +446,7 @@ const TimeTable = ({ navigation }) => {
                                                 backgroundFinal : item.note === 'Checkin' ? backgroundColorState.checkin : item.note === 'Out' ? backgroundColorState.takeoff : '#ffffff'
                                     }]}>
                                     <View style={[style.color_border_content_box,
-                                    { flex: 0.25, flexDirection: 'row' }]}>
+                                    { flex: 0.27, flexDirection: 'row' }]}>
                                         <View style={style.logo_image_canvas} >
                                             <Image
                                                 resizeMethod={'resize'}
@@ -454,7 +456,7 @@ const TimeTable = ({ navigation }) => {
                                             />
                                         </View>
                                         <View style={[style.set_center, {
-                                            width: '60%', height: '100%',
+                                            width: '70%', height: '100%',
                                         }]}>
                                             <Text style={style.font_content_style}>
                                                 {item.company}
@@ -462,12 +464,12 @@ const TimeTable = ({ navigation }) => {
                                         </View>
 
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.15 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.19 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.name_ship}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.2 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.18 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.destination}
                                         </Text>
@@ -487,7 +489,7 @@ const TimeTable = ({ navigation }) => {
                                             {item.gate}
                                         </Text>
                                     </View>
-                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.14 }]}>
+                                    <View style={[style.set_center, style.color_border_content_box, { flex: 0.1 }]}>
                                         <Text style={style.font_content_style}>
                                             {item.note === 'Final' ? 'Final Call' : item.note}
                                         </Text>
@@ -629,7 +631,7 @@ const style = StyleSheet.create({
         justifyContent: 'center',
     },
     logo_image_canvas: {
-        width: '40%',
+        width: '30%',
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
